@@ -466,48 +466,51 @@ export default function App() {
     // Warm up the encoder
     recorder.start(500);
 
-    const captureFrame = async () => {
-      if (!exporting || framesCaptured >= totalFrames) {
-        if (recorder.state === 'recording') {
-            setTimeout(() => recorder.stop(), 500);
+    const captureLoop = async () => {
+      const { toCanvas } = await import('html-to-image');
+      
+      while (exporting && framesCaptured < totalFrames) {
+        try {
+          // Sync media index with capture progress
+          const currentProgressPercent = framesCaptured / totalFrames;
+          const nextIndex = Math.floor(currentProgressPercent * media.length);
+          if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
+            setCurrentMediaIndex(nextIndex);
+            // Small pause to let the DOM update the image/video source
+            await new Promise(r => setTimeout(r, 100));
+          }
+
+          const frameCanvas = await toCanvas(previewRef.current!, {
+            width: canvas.width,
+            height: canvas.height,
+            pixelRatio: 1,
+            style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
+            cacheBust: false,
+            skipFonts: true,
+            imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+          });
+          
+          ctx.drawImage(frameCanvas, 0, 0, canvas.width, canvas.height);
+          framesCaptured++;
+          setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
+          
+          // Yield to browser for smooth encoding
+          await new Promise(r => setTimeout(r, Math.max(5, 50 - (isHD ? 20 : 0))));
+        } catch (err) {
+          console.error("Capture step failed:", err);
+          framesCaptured++;
+          await new Promise(r => setTimeout(r, 10));
         }
-        return;
       }
 
-      try {
-        const frameCanvas = await toCanvas(previewRef.current!, {
-          width: canvas.width,
-          height: canvas.height,
-          pixelRatio: 1,
-          style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
-          cacheBust: false,
-          skipFonts: true,
-          imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", // 1x1 transparent
-        });
-        
-        ctx.drawImage(frameCanvas, 0, 0, canvas.width, canvas.height);
-        framesCaptured++;
-        setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
-        
-        // Sync media index with capture progress
-        const nextIndex = Math.floor((framesCaptured / totalFrames) * media.length);
-        if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
-          setCurrentMediaIndex(nextIndex);
-        }
-
-        // Wait a tiny bit to let the MediaRecorder process the frame
-        setTimeout(captureFrame, 1000 / fps);
-      } catch (err) {
-        console.error("Capture step failed:", err);
-        framesCaptured++;
-        setTimeout(captureFrame, 10);
+      if (recorder.state === 'recording') {
+        console.log("Finishing recording...");
+        recorder.stop();
       }
     };
 
-    // Initial delay to ensure UI is ready
-    setTimeout(captureFrame, 500);
-
-    captureFrame();
+    // Start the process
+    captureLoop();
   };
 
   const handleExport = (quality: string) => {
