@@ -146,7 +146,7 @@ export default function App() {
       if (!apiKey) {
         throw new Error("GEMINI_API_KEY is missing");
       }
-      aiRef.current = new GoogleGenAI(apiKey);
+      aiRef.current = new GoogleGenAI({ apiKey });
     }
     return aiRef.current;
   };
@@ -379,7 +379,8 @@ export default function App() {
     
     const chunks: Blob[] = [];
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
+    // Important: Use willReadFrequently to optimize for regular frame captures
+    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true })!;
     
     const isHD = quality.includes('1080');
     const width = isHD ? 1080 : 720;
@@ -387,34 +388,37 @@ export default function App() {
     canvas.width = width;
     canvas.height = height;
 
+    // Draw initial background to ensure stream has content
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
 
     let stream: MediaStream;
     try {
-      stream = canvas.captureStream(25); // Faster FPS for smoother motion
+      // Some mobile browsers need a starting frame before calling captureStream
+      stream = canvas.captureStream(25);
     } catch (e) {
-      alert("متصفحك لا يدعم خاصية التقاط الشاشة بالتصدير. يرجى استخدام متصفح حديث.");
+      alert("متصفحك لا يدعم خاصية التصدير المباشر. يرجى تجربة متصفح Chrome.");
       setExporting(false);
       return;
     }
 
-    // Try to include audio if possible
+    // Audio capture with fallback
     try {
       if (audioRef.current) {
-        const audioStream = (audioRef.current as any).captureStream ? (audioRef.current as any).captureStream() : null;
+        const audio = audioRef.current as any;
+        const audioStream = audio.captureStream ? audio.captureStream() : (audio.mozCaptureStream ? audio.mozCaptureStream() : null);
         if (audioStream && audioStream.getAudioTracks().length > 0) {
           stream.addTrack(audioStream.getAudioTracks()[0]);
         }
       }
     } catch (err) {
-      console.warn("Could not capture audio stream, recording video only.");
+      console.warn("Audio track capture skipped or failed.");
     }
 
-    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm', 'video/quicktime'].find(t => MediaRecorder.isTypeSupported(t)) || '';
     
     if (!mimeType) {
-      alert("عذراً، متصفحك لا يدعم تنسيقات الفيديو المطلوبة للتحميل.");
+      alert("تعذر العثور على تنسيق فيديو مدعوم في هذا المتصفح.");
       setExporting(false);
       return;
     }
@@ -425,9 +429,7 @@ export default function App() {
     });
 
     recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-      }
+      if (e.data && e.data.size > 0) chunks.push(e.data);
     };
 
     recorder.onstop = () => {
@@ -442,28 +444,26 @@ export default function App() {
         const a = document.createElement('a');
         a.href = url;
         const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        a.download = `QuikPro_Video_${Date.now()}.${extension}`;
+        a.download = `QUIKPRO_VIDEO_${Date.now()}.${extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
       } else {
-        alert("تنبيه: تعذر إنشاء ملف الفيديو. جرب استخدام متصفح مغاير مثل Chrome أو تقليل عدد الصور.");
+        alert("تنبيه: محتوى الفيديو فارغ. يرجى التأكد من اختيار صور صحيحة وإعادة المحاولة.");
       }
       setExportProgress(0);
     };
 
     const totalSeconds = duration || 5;
-    const fps = 15; // Reliable capture rate for mobile
+    const fps = 15;
     const totalFrames = Math.ceil(totalSeconds * fps);
     let framesCaptured = 0;
-
-    const { toCanvas } = await import('html-to-image');
 
     setCurrentMediaIndex(0);
     setIsPlaying(true);
     
-    // Warm up the encoder
+    // Start recorder before capturing frames
     recorder.start(500);
 
     const captureLoop = async () => {
@@ -471,14 +471,17 @@ export default function App() {
       
       while (exporting && framesCaptured < totalFrames) {
         try {
-          // Sync media index with capture progress
-          const currentProgressPercent = framesCaptured / totalFrames;
-          const nextIndex = Math.floor(currentProgressPercent * media.length);
+          const progressPercent = framesCaptured / totalFrames;
+          const nextIndex = Math.floor(progressPercent * media.length);
+          
           if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
             setCurrentMediaIndex(nextIndex);
-            // Small pause to let the DOM update the image/video source
-            await new Promise(r => setTimeout(r, 100));
+            // Allow more time for source switching on mobile
+            await new Promise(r => setTimeout(r, 150));
           }
+
+          // Force reflow and wait to ensure DOM is ready
+          await new Promise(r => requestAnimationFrame(r));
 
           const frameCanvas = await toCanvas(previewRef.current!, {
             width: canvas.width,
@@ -487,6 +490,7 @@ export default function App() {
             style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
             cacheBust: false,
             skipFonts: true,
+            // Fallback for missing/tainted images
             imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
           });
           
@@ -494,22 +498,20 @@ export default function App() {
           framesCaptured++;
           setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
           
-          // Yield to browser for smooth encoding
-          await new Promise(r => setTimeout(r, Math.max(5, 50 - (isHD ? 20 : 0))));
+          // Small delays are crucial for the MediaRecorder to process the data on slow devices
+          await new Promise(r => setTimeout(r, isHD ? 60 : 30));
         } catch (err) {
-          console.error("Capture step failed:", err);
+          console.error("Frame capture error:", err);
           framesCaptured++;
           await new Promise(r => setTimeout(r, 10));
         }
       }
 
       if (recorder.state === 'recording') {
-        console.log("Finishing recording...");
         recorder.stop();
       }
     };
 
-    // Start the process
     captureLoop();
   };
 
@@ -912,13 +914,13 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
                         autoPlay 
                         muted 
                         loop 
-                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') ? undefined : "anonymous"}
+                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') || media[currentMediaIndex].url.startsWith('data:') ? undefined : "anonymous"}
                       />
                     ) : (
                       <img 
                         src={media[currentMediaIndex].url} 
                         className="relative z-10 h-full w-full object-cover object-top shadow-2xl" 
-                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') ? undefined : "anonymous"}
+                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') || media[currentMediaIndex].url.startsWith('data:') ? undefined : "anonymous"}
                       />
                     )}
                   </div>
