@@ -379,7 +379,7 @@ export default function App() {
     
     const chunks: Blob[] = [];
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { alpha: false })!;
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
     
     const isHD = quality.includes('1080');
     const width = isHD ? 1080 : 720;
@@ -392,38 +392,40 @@ export default function App() {
 
     let stream: MediaStream;
     try {
-      stream = canvas.captureStream(20); // Steady 20 FPS
+      stream = canvas.captureStream(25); // Faster FPS for smoother motion
     } catch (e) {
-      alert("متصفحك لا يدعم خاصية التقاط الشاشة. يرجى استخدام متصفح حديث مثل Chrome.");
+      alert("متصفحك لا يدعم خاصية التقاط الشاشة بالتصدير. يرجى استخدام متصفح حديث.");
       setExporting(false);
       return;
     }
 
-    const mimeType = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    // Try to include audio if possible
+    try {
+      if (audioRef.current) {
+        const audioStream = (audioRef.current as any).captureStream ? (audioRef.current as any).captureStream() : null;
+        if (audioStream && audioStream.getAudioTracks().length > 0) {
+          stream.addTrack(audioStream.getAudioTracks()[0]);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not capture audio stream, recording video only.");
+    }
+
+    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
     
     if (!mimeType) {
-      alert("عذراً، متصفحك لا يدعم تنسيقات الفيديو المطلوبة.");
+      alert("عذراً، متصفحك لا يدعم تنسيقات الفيديو المطلوبة للتحميل.");
       setExporting(false);
       return;
     }
 
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: isHD ? 6000000 : 3000000
+      videoBitsPerSecond: isHD ? 8000000 : 4000000
     });
 
-    recorder.onstart = () => {
-      console.log("MediaRecorder started recording");
-      // Force an initial draw to "kickstart" some streams
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, width, height);
-    };
-    
-    recorder.onerror = (e) => console.error("MediaRecorder error:", e);
-    
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
-        console.log("Recorded chunk size:", e.data.size);
         chunks.push(e.data);
       }
     };
@@ -439,76 +441,71 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const extension = mimeType.includes('mp4') || mimeType.includes('quicktime') ? 'mp4' : 'webm';
-        a.download = `QuikPro_Export_${Date.now()}.${extension}`;
+        const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        a.download = `QuikPro_Video_${Date.now()}.${extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
       } else {
-        alert("تنبيه: تعذر إنشاء ملف الفيديو. قد يكون ذلك بسبب قيود الأمان في المتصفح على الصور المحلية أو الفيديوهات. حاول استخدام متصفح مغاير أو تقليل عدد الصور.");
+        alert("تنبيه: تعذر إنشاء ملف الفيديو. جرب استخدام متصفح مغاير مثل Chrome أو تقليل عدد الصور.");
       }
       setExportProgress(0);
     };
 
     const totalSeconds = duration || 5;
-    const fps = 12; // Stable capture rate
+    const fps = 15; // Reliable capture rate for mobile
     const totalFrames = Math.ceil(totalSeconds * fps);
     let framesCaptured = 0;
 
-    const { toPng } = await import('html-to-image');
+    const { toCanvas } = await import('html-to-image');
 
     setCurrentMediaIndex(0);
     setIsPlaying(true);
-    recorder.start(100);
+    
+    // Warm up the encoder
+    recorder.start(500);
 
     const captureFrame = async () => {
       if (!exporting || framesCaptured >= totalFrames) {
         if (recorder.state === 'recording') {
-            // Signal a last frame
-            ctx.fillStyle = "rgba(0,0,0,0.01)";
-            ctx.fillRect(0,0,1,1);
             setTimeout(() => recorder.stop(), 500);
         }
         return;
       }
 
       try {
-        // Use toPng + new Image() as a more robust fallback for canvas drawing
-        // This often avoids tainted canvas issues better than toCanvas directly
-        const dataUrl = await toPng(previewRef.current!, {
+        const frameCanvas = await toCanvas(previewRef.current!, {
           width: canvas.width,
           height: canvas.height,
           pixelRatio: 1,
           style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
           cacheBust: false,
           skipFonts: true,
-          includeGraphics: true
+          imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", // 1x1 transparent
         });
         
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          framesCaptured++;
-          setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
-          setTimeout(captureFrame, 1000 / fps);
-        };
-        img.onerror = () => {
-           console.error("Image loading failed during capture");
-           framesCaptured++;
-           setTimeout(captureFrame, 10);
-        };
-        img.src = dataUrl;
+        ctx.drawImage(frameCanvas, 0, 0, canvas.width, canvas.height);
+        framesCaptured++;
+        setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
         
+        // Sync media index with capture progress
+        const nextIndex = Math.floor((framesCaptured / totalFrames) * media.length);
+        if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
+          setCurrentMediaIndex(nextIndex);
+        }
+
+        // Wait a tiny bit to let the MediaRecorder process the frame
+        setTimeout(captureFrame, 1000 / fps);
       } catch (err) {
         console.error("Capture step failed:", err);
-        if (err instanceof Error && err.message.includes('SecurityError')) {
-           console.error("CORS/Security error detected during capture");
-        }
         framesCaptured++;
-        setTimeout(captureFrame, 100);
+        setTimeout(captureFrame, 10);
       }
     };
+
+    // Initial delay to ensure UI is ready
+    setTimeout(captureFrame, 500);
 
     captureFrame();
   };
