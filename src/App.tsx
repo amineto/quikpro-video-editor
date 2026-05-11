@@ -379,30 +379,34 @@ export default function App() {
     
     const chunks: Blob[] = [];
     const canvas = document.createElement('canvas');
-    // Important: Use willReadFrequently to optimize for regular frame captures
     const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true })!;
     
     const isHD = quality.includes('1080');
-    const width = isHD ? 1080 : 720;
-    const height = Math.floor((width * 16) / 9);
+    const baseSize = isHD ? 1080 : 720;
+    
+    let width = baseSize;
+    let height = baseSize;
+    if (aspectRatio === '9/16') {
+      height = Math.floor((width * 16) / 9);
+    } else if (aspectRatio === '16/9') {
+      height = Math.floor((width * 9) / 16);
+    }
+    
     canvas.width = width;
     canvas.height = height;
 
-    // Draw initial background to ensure stream has content
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
 
     let stream: MediaStream;
     try {
-      // Some mobile browsers need a starting frame before calling captureStream
-      stream = canvas.captureStream(25);
+      stream = canvas.captureStream(20);
     } catch (e) {
-      alert("متصفحك لا يدعم خاصية التصدير المباشر. يرجى تجربة متصفح Chrome.");
+      alert("متصفحك لا يدعم خاصية التصدير.");
       setExporting(false);
       return;
     }
 
-    // Audio capture with fallback
     try {
       if (audioRef.current) {
         const audio = audioRef.current as any;
@@ -412,20 +416,14 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.warn("Audio track capture skipped or failed.");
+      console.warn("Audio capture skipped.");
     }
 
-    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm', 'video/quicktime'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
     
-    if (!mimeType) {
-      alert("تعذر العثور على تنسيق فيديو مدعوم في هذا المتصفح.");
-      setExporting(false);
-      return;
-    }
-
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: isHD ? 8000000 : 4000000
+      videoBitsPerSecond: isHD ? 6000000 : 3000000
     });
 
     recorder.ondataavailable = (e) => {
@@ -443,72 +441,80 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        a.download = `QUIKPRO_VIDEO_${Date.now()}.${extension}`;
+        a.download = `QUIKPRO_VIDEO_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       } else {
-        alert("تنبيه: محتوى الفيديو فارغ. يرجى التأكد من اختيار صور صحيحة وإعادة المحاولة.");
+        alert("تنبيه: تعذر إنشاء الفيديو. يرجى التأكد من أن الصور ليست محمية بحقوق ملكية أو قيود أمان.");
       }
       setExportProgress(0);
     };
 
     const totalSeconds = duration || 5;
-    const fps = 15;
+    const fps = 10;
     const totalFrames = Math.ceil(totalSeconds * fps);
     let framesCaptured = 0;
 
     setCurrentMediaIndex(0);
     setIsPlaying(true);
-    
-    // Start recorder before capturing frames
-    recorder.start(500);
+    recorder.start(100);
 
+    const heartbeat = setInterval(() => {
+      if (recorder.state === 'recording') {
+        ctx.fillStyle = "rgba(0,0,0,0.001)";
+        ctx.fillRect(0,0,1,1);
+      }
+    }, 100);
+
+    let isExportActive = true;
     const captureLoop = async () => {
-      const { toCanvas } = await import('html-to-image');
+      const { toPng } = await import('html-to-image');
       
-      while (exporting && framesCaptured < totalFrames) {
+      while (isExportActive && framesCaptured < totalFrames) {
         try {
           const progressPercent = framesCaptured / totalFrames;
           const nextIndex = Math.floor(progressPercent * media.length);
           
           if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
             setCurrentMediaIndex(nextIndex);
-            // Allow more time for source switching on mobile
-            await new Promise(r => setTimeout(r, 150));
+            await new Promise(r => setTimeout(r, 400));
           }
 
-          // Force reflow and wait to ensure DOM is ready
-          await new Promise(r => requestAnimationFrame(r));
+          if (!previewRef.current) break;
 
-          const frameCanvas = await toCanvas(previewRef.current!, {
+          const dataUrl = await toPng(previewRef.current, {
             width: canvas.width,
             height: canvas.height,
             pixelRatio: 1,
             style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
-            cacheBust: false,
-            skipFonts: true,
-            // Fallback for missing/tainted images
-            imagePlaceholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+            cacheBust: true,
           });
           
-          ctx.drawImage(frameCanvas, 0, 0, canvas.width, canvas.height);
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = dataUrl;
+          });
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           framesCaptured++;
           setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
           
-          // Small delays are crucial for the MediaRecorder to process the data on slow devices
-          await new Promise(r => setTimeout(r, isHD ? 60 : 30));
+          await new Promise(r => setTimeout(r, 80));
         } catch (err) {
-          console.error("Frame capture error:", err);
+          console.error("Frame capture failed:", err);
           framesCaptured++;
-          await new Promise(r => setTimeout(r, 10));
+          await new Promise(r => setTimeout(r, 20));
         }
       }
 
+      clearInterval(heartbeat);
+      isExportActive = false;
       if (recorder.state === 'recording') {
-        recorder.stop();
+        setTimeout(() => recorder.stop(), 1000);
       }
     };
 
