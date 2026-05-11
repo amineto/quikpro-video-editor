@@ -412,8 +412,14 @@ export default function App() {
       videoBitsPerSecond: isHD ? 6000000 : 3000000
     });
 
+    recorder.onstart = () => console.log("MediaRecorder started recording");
+    recorder.onerror = (e) => console.error("MediaRecorder error:", e);
+    
     recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
+      if (e.data && e.data.size > 0) {
+        console.log("Recorded chunk size:", e.data.size);
+        chunks.push(e.data);
+      }
     };
 
     recorder.onstop = () => {
@@ -462,7 +468,7 @@ export default function App() {
           height: canvas.height,
           pixelRatio: 1,
           style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
-          cacheBust: true,
+          cacheBust: false,
           skipFonts: true
         });
         
@@ -473,6 +479,10 @@ export default function App() {
         setTimeout(captureFrame, 1000 / fps);
       } catch (err) {
         console.error("Capture step failed:", err);
+        // If it's a security error, we might need to inform the user
+        if (err instanceof Error && err.message.includes('SecurityError')) {
+           console.error("CORS/Security error detected during capture");
+        }
         framesCaptured++;
         setTimeout(captureFrame, 100);
       }
@@ -880,13 +890,13 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
                         autoPlay 
                         muted 
                         loop 
-                        crossOrigin="anonymous"
+                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') ? undefined : "anonymous"}
                       />
                     ) : (
                       <img 
                         src={media[currentMediaIndex].url} 
                         className="relative z-10 h-full w-full object-cover object-top shadow-2xl" 
-                        crossOrigin="anonymous"
+                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') ? undefined : "anonymous"}
                       />
                     )}
                   </div>
