@@ -412,7 +412,13 @@ export default function App() {
       videoBitsPerSecond: isHD ? 6000000 : 3000000
     });
 
-    recorder.onstart = () => console.log("MediaRecorder started recording");
+    recorder.onstart = () => {
+      console.log("MediaRecorder started recording");
+      // Force an initial draw to "kickstart" some streams
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+    };
+    
     recorder.onerror = (e) => console.error("MediaRecorder error:", e);
     
     recorder.ondataavailable = (e) => {
@@ -433,14 +439,14 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const extension = mimeType.includes('mp4') || mimeType.includes('quicktime') ? 'mp4' : 'webm';
         a.download = `QuikPro_Export_${Date.now()}.${extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        alert("تنبيه: تعذر إنشاء ملف الفيديو. قد يكون ذلك بسبب قيود الأمان في المتصفح على الصور الخارجية. حاول استخدام صور من جهازك.");
+        alert("تنبيه: تعذر إنشاء ملف الفيديو. قد يكون ذلك بسبب قيود الأمان في المتصفح على الصور المحلية أو الفيديوهات. حاول استخدام متصفح مغاير أو تقليل عدد الصور.");
       }
       setExportProgress(0);
     };
@@ -450,7 +456,7 @@ export default function App() {
     const totalFrames = Math.ceil(totalSeconds * fps);
     let framesCaptured = 0;
 
-    const { toCanvas } = await import('html-to-image');
+    const { toPng } = await import('html-to-image');
 
     setCurrentMediaIndex(0);
     setIsPlaying(true);
@@ -458,28 +464,44 @@ export default function App() {
 
     const captureFrame = async () => {
       if (!exporting || framesCaptured >= totalFrames) {
-        if (recorder.state === 'recording') recorder.stop();
+        if (recorder.state === 'recording') {
+            // Signal a last frame
+            ctx.fillStyle = "rgba(0,0,0,0.01)";
+            ctx.fillRect(0,0,1,1);
+            setTimeout(() => recorder.stop(), 500);
+        }
         return;
       }
 
       try {
-        const frameCanvas = await toCanvas(previewRef.current!, {
+        // Use toPng + new Image() as a more robust fallback for canvas drawing
+        // This often avoids tainted canvas issues better than toCanvas directly
+        const dataUrl = await toPng(previewRef.current!, {
           width: canvas.width,
           height: canvas.height,
           pixelRatio: 1,
           style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
           cacheBust: false,
-          skipFonts: true
+          skipFonts: true,
+          includeGraphics: true
         });
         
-        ctx.drawImage(frameCanvas, 0, 0, canvas.width, canvas.height);
-        framesCaptured++;
-        setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          framesCaptured++;
+          setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
+          setTimeout(captureFrame, 1000 / fps);
+        };
+        img.onerror = () => {
+           console.error("Image loading failed during capture");
+           framesCaptured++;
+           setTimeout(captureFrame, 10);
+        };
+        img.src = dataUrl;
         
-        setTimeout(captureFrame, 1000 / fps);
       } catch (err) {
         console.error("Capture step failed:", err);
-        // If it's a security error, we might need to inform the user
         if (err instanceof Error && err.message.includes('SecurityError')) {
            console.error("CORS/Security error detected during capture");
         }
@@ -742,7 +764,7 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
         ref={audioRef} 
         src={selectedMusic.url} 
         onEnded={handleStop}
-        crossOrigin="anonymous"
+        crossOrigin={selectedMusic.url.startsWith('blob:') ? undefined : "anonymous"}
         preload="auto"
         onCanPlay={() => setErrorMsg(null)}
         onError={(e) => {
