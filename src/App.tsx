@@ -138,6 +138,18 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const aiRef = useRef<GoogleGenAI | null>(null);
+
+  const getAI = () => {
+    if (!aiRef.current) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is missing");
+      }
+      aiRef.current = new GoogleGenAI(apiKey);
+    }
+    return aiRef.current;
+  };
   
   // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -148,8 +160,6 @@ export default function App() {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
   useEffect(() => {
     if (syncToMusic && selectedMusic) {
@@ -244,6 +254,7 @@ export default function App() {
       const item = media[index];
       if (!item || item.type !== 'image') return;
 
+      const ai = getAI();
       const response = await fetch(item.url);
       const blob = await response.blob();
       const reader = new FileReader();
