@@ -1,32 +1,17 @@
 import { motion, AnimatePresence, Reorder, useDragControls } from "motion/react";
-import { ChevronLeft, Play, Plus, Music, Edit2, Film, Share2, Save, Image as ImageIcon, X, Check, Volume2, AlertCircle, ChevronRight, Wand2, Download, Monitor, Smartphone, Square, Copy, GripVertical, Loader2, Filter, Trophy, Aperture, Sparkles, Zap, ImagePlus } from "lucide-react";
+import { ChevronLeft, Play, Plus, Music, Edit2, Film, Share2, Save, Image as ImageIcon, X, Check, Volume2, AlertCircle, ChevronRight, Wand2, Download, Monitor, Smartphone, Square, Copy, GripVertical, Loader2, Filter, Trophy, Aperture, Sparkles, Zap, ImagePlus, Layers } from "lucide-react";
 import { useState, useRef, useEffect, ChangeEvent, MouseEvent as ReactMouseEvent } from "react";
 import { GoogleGenAI } from "@google/genai";
 
 const ANIMATIONS = [
-  { id: 'velocity', name: '3D PUSH', description: 'Dynamic Depth' },
-  { id: 'glory', name: 'GLARE', description: 'Cinematic Bloom' },
-  { id: 'stadium', name: 'ARENA', description: 'Stadium Vibe' },
-  { id: 'cyber', name: 'GLITCH', description: 'Tech Fragment' },
-  { id: 'rookie', name: 'SHAKE', description: 'Raw Impact' },
-  { id: 'midnight', name: 'FLASH', description: 'Midnight Beats' },
-  { id: 'ultra', name: 'HYPER', description: 'Speed Burst' },
-  { id: 'power', name: 'Z-AXIS', description: '3D Rotation' },
-  { id: 'scan', name: 'DIGITAL', description: 'Data Stream' },
-  { id: 'vhs', name: 'ANALOG', description: 'Retro Grain' },
-];
-
-const VIDEO_EFFECTS = [
-  { id: 'none', name: 'CLEAN', description: 'Original Look' },
-  { id: 'var', name: 'VAR DATA', description: 'Live Stats' },
-  { id: 'grid', name: 'TACTICAL', description: 'Pitch Layout' },
-  { id: 'glow', name: 'NEON EDGE', description: 'Neon Glow' },
-  { id: 'flicker', name: 'TV NOISE', description: 'Static Noise' },
-  { id: 'noise', name: 'VINTAGE', description: '16mm Film' },
-  { id: 'vignette', name: 'DRAMATIC', description: 'Shadow Edge' },
-  { id: 'lines', name: 'CRT SCAN', description: 'Tube TV' },
-  { id: 'chroma', name: 'RGB SPLIT', description: 'Color Glitch' },
-  { id: 'flare', name: 'SUNBURST', description: 'Light Optic' },
+  { id: 'turbo', name: 'TURBO', description: 'High Energy Pulse' },
+  { id: 'stadium', name: 'STADIUM', description: 'Grand Atmosphere' },
+  { id: 'echo', name: 'ECHO', description: 'Ghosting Motion' },
+  { id: 'technical', name: 'TECHNICAL', description: 'Data Glitch' },
+  { id: 'cinematic', name: 'CINEMATIC', description: 'Slow Tension' },
+  { id: 'pulse', name: 'HEARTBEAT', description: 'Rhythmic Zoom' },
+  { id: 'flash', name: 'OVEREXPOSE', description: 'Bright Transitions' },
+  { id: 'grain', name: 'HERITAGE', description: 'Classic Film' },
 ];
 
 const ZOOM_STYLES = [
@@ -41,17 +26,19 @@ const ZOOM_STYLES = [
 ];
 
 const TRANSITION_STYLES = [
-  { id: 'film_roll', name: 'Film Roll', icon: '🎞️', description: 'Classic Cinematic' },
-  { id: 'light_leak', name: 'Light Leak', icon: '✨', description: 'Flash Frame' },
-  { id: 'blur_flash', name: 'Blur Flash', icon: '🌫️', description: 'Soft Transition' },
-  { id: 'zoom_burst', name: 'Power Zoom', icon: '💥', description: 'Impact Jump' },
+  { id: 'goal_glory', name: 'GOAL GLORY', icon: '⚽', description: 'Golden Victory Burst' },
+  { id: 'pitch_slice', name: 'PITCH SWEEP', icon: '🌱', description: 'Grass Diagonal Cut' },
+  { id: 'jersey_swipe', name: 'STRIPE SWIPE', icon: '👕', description: 'Team Color Slide' },
+  { id: 'stadium_zoom', name: 'ARENA JUMP', icon: '🏟️', description: 'Stadium Depth Pulse' },
+  { id: 'ball_roll', name: 'BALL SPIN', icon: '🏐', description: 'Spherical Distortion' },
+  { id: 'hexa_grid', name: 'HEXA REVEAL', icon: '💠', description: 'Classic Ball Pattern' },
+  { id: 'net_ripple', name: 'NET IMPACT', icon: '🥅', description: 'Goal Net Ripple' },
+  { id: 'floodlight', name: 'SPOTLIGHT', icon: '💡', description: 'Bright Corner Flare' },
+  { id: 'var_glitch', name: 'VAR CHECK', icon: '🖥️', description: 'Technical Glitch' },
+  { id: 'whistle_wave', name: 'KICK OFF', icon: '📢', description: 'Ref Whistle Wave' },
 ];
 
-const STOCK_MUSIC = [
-  { id: 'velocity-beat', name: 'Velocity High', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', duration: 372, genre: 'Phonk' },
-  { id: 'stadium-roar', name: 'Stadium Heat', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', duration: 425, genre: 'Rock' },
-  { id: 'urban-flow', name: 'Urban Flow', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', duration: 312, genre: 'Hip Hop' },
-  { id: 'cyber-synth', name: 'Cyber Night', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', duration: 302, genre: 'Synthwave' },
+const STOCK_MUSIC: MusicItem[] = [
 ];
 
 interface MusicItem {
@@ -91,9 +78,9 @@ const MediaCard = ({ item, idx, currentMediaIndex, jumpToMedia, onDelete }: any)
             onClick={() => jumpToMedia(idx)}
          >
             {item.type === 'video' ? (
-              <video src={item.url} className="h-full w-full object-cover object-top" />
+              <video src={item.url || undefined} className="h-full w-full object-cover object-top" />
             ) : (
-              <img src={item.url} className="h-full w-full object-cover object-top" draggable={false} />
+              <img src={item.url || undefined} className="h-full w-full object-cover object-top" draggable={false} />
             )}
             
             {/* Drag Handle Overlay */}
@@ -123,17 +110,48 @@ const MediaCard = ({ item, idx, currentMediaIndex, jumpToMedia, onDelete }: any)
 
 export default function App() {
   const dragControls = useDragControls();
-  const [activeTab, setActiveTab] = useState<'MEDIA' | 'ANIMATIONS' | 'EFFECTS' | 'ZOOM' | 'MUSIC' | 'EDIT'>('MEDIA');
+  const [activeTab, setActiveTab] = useState<'MEDIA' | 'ANIMATIONS' | 'TRANSITIONS' | 'ZOOM' | 'MUSIC' | 'EDIT'>('MEDIA');
   const [selectedAnimation, setSelectedAnimation] = useState('stadium');
-  const [selectedEffect, setSelectedEffect] = useState('none');
   const [selectedZoom, setSelectedZoom] = useState('ken_burns_in');
-  const [selectedTransition, setSelectedTransition] = useState('light_leak');
+  const [selectedTransition, setSelectedTransition] = useState('goal_glory');
   const [duration, setDuration] = useState(24.5);
   const [syncToMusic, setSyncToMusic] = useState(true);
   const [media, setMedia] = useState<MediaItem[]>([]);
-  const [selectedMusic, setSelectedMusic] = useState(STOCK_MUSIC[0]);
+  const [selectedMusic, setSelectedMusic] = useState<MusicItem | any>(STOCK_MUSIC[0] || { id: 'none', name: 'No Music', url: undefined, duration: 15, genre: 'None' });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState<'16/9' | '9/16' | '1/1'>('16/9');
+  
+  // -- PERSISTENCE LOGIC --
+  useEffect(() => {
+    const saved = localStorage.getItem('quik_pro_project');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.media) setMedia(data.media.map((m: any) => ({ ...m, url: m.url }))); // Re-map to ensure structure
+        if (data.selectedAnimation) setSelectedAnimation(data.selectedAnimation);
+        if (data.selectedTransition) setSelectedTransition(data.selectedTransition);
+        if (data.selectedZoom) setSelectedZoom(data.selectedZoom);
+        if (data.aspectRatio) setAspectRatio(data.aspectRatio);
+        if (data.selectedMusic) setSelectedMusic(data.selectedMusic);
+      } catch (e) { console.error("Auto-load failed", e); }
+    }
+  }, []);
+
+  useEffect(() => {
+    const projectData = {
+      media,
+      selectedAnimation,
+      selectedTransition,
+      selectedZoom,
+      aspectRatio,
+      selectedMusic
+    };
+    if (media.length > 0) {
+      localStorage.setItem('quik_pro_project', JSON.stringify(projectData));
+    }
+  }, [media, selectedAnimation, selectedTransition, selectedZoom, aspectRatio, selectedMusic]);
+  // -----------------------
+
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -162,8 +180,10 @@ export default function App() {
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (syncToMusic && selectedMusic) {
+    // Match Duration to Music ALWAYS if music is selected
+    if (selectedMusic && selectedMusic.id !== 'none') {
       setDuration(selectedMusic.duration);
+      setSyncToMusic(true);
     }
     
     // Reset audio if source changed
@@ -194,8 +214,8 @@ export default function App() {
           
           // Update Media Index
           const index = Math.floor((currentTime / duration) * media.length);
-          if (index < media.length) {
-            setCurrentMediaIndex(prev => (index !== prev ? index : prev));
+          if (index < media.length && index >= 0) {
+            setCurrentMediaIndex(index);
           }
 
           if (currentTime >= duration) {
@@ -364,76 +384,96 @@ export default function App() {
     }
   };
 
+  const assetCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [isRecording, setIsRecording] = useState(false);
+  const exportingRef = useRef(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const startRealExport = async (quality: string) => {
-    if (!previewRef.current) {
-      alert("خطأ: لم يتم العثور على منطقة العرض.");
-      return;
-    }
-    
+  const exportHD = async (quality: string) => {
+    if (media.length === 0) return;
     setExporting(true);
+    exportingRef.current = true;
     setExportProgress(0);
     setIsRecording(true);
     
-    const chunks: Blob[] = [];
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true })!;
-    
+    // 1. Preload all images to memory cache for high-speed deterministic drawing
+    for (const item of media) {
+      if (item.type === 'image' && !assetCache.current.has(item.url)) {
+        try {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = item.url;
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+            setTimeout(resolve, 3000); // 3s timeout per image
+          });
+          assetCache.current.set(item.url, img);
+        } catch (e) {
+          console.error("Preload error for:", item.url);
+        }
+      }
+    }
+
+    // Reset playback for clean capture
+    setCurrentMediaIndex(0);
+    setProgress(0);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
     const isHD = quality.includes('1080');
+    let canvasWidth, canvasHeight;
     const baseSize = isHD ? 1080 : 720;
-    
-    let width = baseSize;
-    let height = baseSize;
+
     if (aspectRatio === '9/16') {
-      height = Math.floor((width * 16) / 9);
-    } else if (aspectRatio === '16/9') {
-      height = Math.floor((width * 9) / 16);
+      canvasWidth = baseSize;
+      canvasHeight = baseSize * (16/9);
+    } else if (aspectRatio === '1/1') {
+      canvasWidth = baseSize;
+      canvasHeight = baseSize;
+    } else {
+      canvasWidth = baseSize * (16/9);
+      canvasHeight = baseSize;
     }
     
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(canvasWidth);
+    canvas.height = Math.round(canvasHeight);
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })!;
 
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-
-    let stream: MediaStream;
-    try {
-      stream = canvas.captureStream(20);
-    } catch (e) {
-      alert("متصفحك لا يدعم خاصية التصدير.");
-      setExporting(false);
-      return;
-    }
-
+    const fps = 30;
+    const stream = canvas.captureStream(fps);
+    
+    // Audio Capture setup
     try {
       if (audioRef.current) {
         const audio = audioRef.current as any;
         const audioStream = audio.captureStream ? audio.captureStream() : (audio.mozCaptureStream ? audio.mozCaptureStream() : null);
-        if (audioStream && audioStream.getAudioTracks().length > 0) {
-          stream.addTrack(audioStream.getAudioTracks()[0]);
+        if (audioStream) {
+          audioStream.getAudioTracks().forEach((track: any) => stream.addTrack(track));
         }
       }
     } catch (err) {
-      console.warn("Audio capture skipped.");
+      console.warn("Audio stream capture failed:", err);
     }
 
-    const mimeType = ['video/mp4', 'video/webm;codecs=h264', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-    
+    const mimeType = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=h264', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+    const chunks: Blob[] = [];
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: isHD ? 6000000 : 3000000
+      videoBitsPerSecond: isHD ? 15000000 : 8000000
     });
 
     recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
+      if (e.data.size > 0) chunks.push(e.data);
     };
 
     recorder.onstop = () => {
       setExporting(false);
+      exportingRef.current = false;
       setIsRecording(false);
-      setIsPlaying(false);
       setShowExport(false);
 
       if (chunks.length > 0) {
@@ -441,88 +481,251 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `QUIKPRO_VIDEO_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
+        a.download = `QUIK_PRO_EXPORT_${Date.now()}.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      } else {
-        alert("تنبيه: تعذر إنشاء الفيديو. يرجى التأكد من أن الصور ليست محمية بحقوق ملكية أو قيود أمان.");
+        URL.revokeObjectURL(url);
       }
-      setExportProgress(0);
     };
 
-    const totalSeconds = duration || 5;
-    const fps = 10;
+    recorder.start();
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+
+    const totalSeconds = duration;
     const totalFrames = Math.ceil(totalSeconds * fps);
     let framesCaptured = 0;
 
-    setCurrentMediaIndex(0);
-    setIsPlaying(true);
-    recorder.start(100);
+    const drawCanvasAnimation = (ctx: CanvasRenderingContext2D, themeId: string, frameIndex: number, totalFrames: number) => {
+      const t = (frameIndex / fps);
+      const cw = ctx.canvas.width;
+      const ch = ctx.canvas.height;
 
-    const heartbeat = setInterval(() => {
-      if (recorder.state === 'recording') {
-        ctx.fillStyle = "rgba(0,0,0,0.001)";
-        ctx.fillRect(0,0,1,1);
-      }
-    }, 100);
+      // Reset and Base Enhancement (Matching preview .enhanced-media)
+      ctx.filter = 'contrast(1.1) saturate(1.05)';
 
-    let isExportActive = true;
-    const captureLoop = async () => {
-      const { toPng } = await import('html-to-image');
-      
-      while (isExportActive && framesCaptured < totalFrames) {
-        try {
-          const progressPercent = framesCaptured / totalFrames;
-          const nextIndex = Math.floor(progressPercent * media.length);
-          
-          if (nextIndex < media.length && nextIndex !== currentMediaIndex) {
-            setCurrentMediaIndex(nextIndex);
-            await new Promise(r => setTimeout(r, 400));
+      switch (themeId) {
+        case 'turbo':
+          // Subtle rhythmic pulse matching Heartbeat
+          const p = 1 + (Math.abs(Math.sin(t * 8)) * 0.08);
+          ctx.translate(cw/2, ch/2); ctx.scale(p, p); ctx.translate(-cw/2, -ch/2);
+          ctx.filter += ' brightness(1.1) saturate(1.2)';
+          break;
+        case 'echo':
+          // Simple side-to-side ghosting
+          ctx.translate(Math.sin(t * 10) * 5, 0);
+          ctx.globalAlpha = 0.9;
+          break;
+        case 'technical':
+          if (Math.random() > 0.94) {
+             ctx.translate((Math.random()-0.5)*30, 0);
+             ctx.filter += ' invert(0.1) brightness(1.5)';
           }
-
-          if (!previewRef.current) break;
-
-          const dataUrl = await toPng(previewRef.current, {
-            width: canvas.width,
-            height: canvas.height,
-            pixelRatio: 1,
-            style: { transform: 'scale(1)', borderRadius: '0', visibility: 'visible' },
-            cacheBust: true,
-          });
-          
-          const img = new Image();
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = dataUrl;
-          });
-
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          framesCaptured++;
-          setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
-          
-          await new Promise(r => setTimeout(r, 80));
-        } catch (err) {
-          console.error("Frame capture failed:", err);
-          framesCaptured++;
-          await new Promise(r => setTimeout(r, 20));
-        }
-      }
-
-      clearInterval(heartbeat);
-      isExportActive = false;
-      if (recorder.state === 'recording') {
-        setTimeout(() => recorder.stop(), 1000);
+          break;
+        case 'cinematic':
+          // Slow steady push
+          const cScale = 1.05 + ( (frameIndex/totalFrames) * 0.1);
+          ctx.translate(cw/2, ch/2); ctx.scale(cScale, cScale); ctx.translate(-cw/2, -ch/2);
+          break;
+        case 'pulse':
+          const pulse = 1 + (Math.abs(Math.cos(t * 6)) * 0.1);
+          ctx.translate(cw/2, ch/2); ctx.scale(pulse, pulse); ctx.translate(-cw/2, -ch/2);
+          break;
+        case 'flash':
+          if (t % 1.5 < 0.15) ctx.filter += ' brightness(3) contrast(0.5)';
+          break;
+        case 'stadium':
+          ctx.filter += ` brightness(${1 + Math.sin(t*2) * 0.1}) saturate(1.1)`;
+          break;
+        case 'grain':
+          ctx.translate((Math.random()-0.5)*3, (Math.random()-0.5)*3);
+          ctx.filter += ' sepia(0.1) contrast(1.1)';
+          break;
       }
     };
 
-    captureLoop();
+    const drawCanvasTransition = (ctx: CanvasRenderingContext2D, type: string, frameIndex: number, totalFrames: number, mediaCount: number) => {
+       const progress = (frameIndex / totalFrames);
+       const clipProgress = (progress * mediaCount) % 1;
+       const transitionWindow = 0.2; 
+       let alpha = 0;
+       
+       if (clipProgress < transitionWindow) {
+         alpha = 1 - (clipProgress / transitionWindow);
+       } else if (clipProgress > (1 - transitionWindow)) {
+         alpha = (clipProgress - (1 - transitionWindow)) / transitionWindow;
+       } else {
+         return;
+       }
+
+       const w = ctx.canvas.width;
+       const h = ctx.canvas.height;
+       ctx.save();
+       ctx.globalAlpha = alpha;
+
+       switch (type) {
+         case 'goal_glory':
+           ctx.fillStyle = 'white';
+           ctx.fillRect(0, 0, w, h);
+           break;
+         case 'pitch_slice':
+           ctx.fillStyle = '#065f46'; // Emerald 900
+           ctx.beginPath();
+           const x = (1 - alpha) * w * 2 - w;
+           ctx.moveTo(x, 0); ctx.lineTo(x + w, 0); ctx.lineTo(x + w * 1.2, h); ctx.lineTo(x + w * 0.2, h);
+           ctx.fill();
+           break;
+         case 'jersey_swipe':
+           const barH = h / 3;
+           for (let i = 0; i < 3; i++) {
+             ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#0ea5e9';
+             const barAlpha = Math.max(0, Math.min(1, alpha * 2 - (i * 0.2)));
+             ctx.fillRect(0, i * barH, w * barAlpha, barH);
+           }
+           break;
+         case 'stadium_zoom':
+           ctx.fillStyle = 'white';
+           ctx.beginPath();
+           ctx.arc(w/2, h/2, (w+h) * (1-alpha), 0, Math.PI * 2);
+           ctx.fill();
+           break;
+         case 'hexa_grid':
+            ctx.fillStyle = 'black';
+            const cell = w / 6;
+            for(let i=0; i<36; i++) {
+              const r = Math.floor(i/6); const c = i%6;
+              const d = Math.random() * 0.2;
+              const s = Math.max(0, Math.min(1, alpha * 2 - d));
+              if(s > 0) ctx.fillRect(c*cell, r*cell, cell * s, cell * s);
+            }
+            break;
+         case 'ball_roll':
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(w/2, h/2, (w+h) * alpha, 0, Math.PI * 2); ctx.fill();
+            break;
+         case 'floodlight':
+            ctx.fillStyle = 'white'; ctx.fillRect(0, 0, w, h);
+            break;
+         case 'whistle_wave':
+            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 40 * alpha;
+            ctx.beginPath(); ctx.arc(w/2, h/2, (w+h) * clipProgress * 0.5, 0, Math.PI * 2); ctx.stroke();
+            break;
+         case 'var_glitch':
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.3)';
+            ctx.fillRect(0, 0, w, h);
+            break;
+       }
+       ctx.restore();
+    };
+
+    const processFrames = async () => {
+      const frameThreshold = 1000 / fps;
+      
+      // We let the audio play naturally and we capture frames in real-time
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        await audioRef.current.play().catch(() => {});
+      }
+
+      const startTime = performance.now();
+      
+      while (framesCaptured < totalFrames && exportingRef.current) {
+        try {
+          const now = performance.now();
+          const elapsed = now - startTime;
+          const targetFrame = Math.floor(elapsed / frameThreshold);
+          
+          if (targetFrame <= framesCaptured) {
+            await new Promise(r => requestAnimationFrame(r));
+            continue;
+          }
+
+          const currentProgress = framesCaptured / totalFrames;
+          const targetIndex = Math.min(Math.floor(currentProgress * media.length), media.length - 1);
+          const itemProgress = (currentProgress * media.length) % 1;
+
+          if (currentMediaIndex !== targetIndex) {
+            setCurrentMediaIndex(targetIndex);
+            setProgress(currentProgress * 100);
+          }
+
+          const item = media[targetIndex];
+          
+          // --- DRAWING ---
+          ctx.save();
+          ctx.fillStyle = '#0a0a0a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Global Enhancement
+          ctx.filter = 'contrast(1.1) saturate(1.1)';
+
+          // Applying Animation Theme
+          ctx.save();
+          drawCanvasAnimation(ctx, selectedAnimation, framesCaptured, totalFrames);
+
+          // Drawing Media
+          if (item.type === 'image') {
+            const img = assetCache.current.get(item.url);
+            if (img) {
+              const ratio = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+              const nw = img.naturalWidth * ratio;
+              const nh = img.naturalHeight * ratio;
+              const xPos = (canvas.width - nw) / 2;
+              let yPos = (canvas.height - nh) / 2;
+              if (nh > canvas.height) yPos = - (nh - canvas.height) * 0.15;
+
+              let zs = 1;
+              if (selectedZoom === 'ken_burns_in') zs = 1 + (0.12 * itemProgress);
+              else if (selectedZoom === 'ken_burns_out') zs = 1.12 - (0.12 * itemProgress);
+              else zs = 1.05;
+
+              ctx.translate(canvas.width/2, canvas.height/2);
+              ctx.scale(zs, zs);
+              ctx.translate(-canvas.width/2, -canvas.height/2);
+              ctx.drawImage(img, xPos, yPos, nw, nh);
+            }
+          } else {
+            const videoEl = previewRef.current?.querySelector('video');
+            if (videoEl && videoEl.readyState >= 2) {
+              const ratio = Math.max(canvas.width / videoEl.videoWidth, canvas.height / videoEl.videoHeight);
+              const nw = videoEl.videoWidth * ratio;
+              const nh = videoEl.videoHeight * ratio;
+              const xPos = (canvas.width - nw) / 2;
+              let yPos = (canvas.height - nh) / 2;
+              if (nh > canvas.height) yPos = - (nh - canvas.height) * 0.15;
+              ctx.drawImage(videoEl, xPos, yPos, nw, nh);
+            }
+          }
+          ctx.restore();
+
+          // Transitions
+          drawCanvasTransition(ctx, selectedTransition, framesCaptured, totalFrames, media.length);
+          
+          ctx.restore();
+          // --- END DRAWING ---
+
+          framesCaptured++;
+          setExportProgress(Math.floor((framesCaptured / totalFrames) * 100));
+        } catch (err) {
+          console.error("Frame skip:", err);
+          framesCaptured++;
+        }
+      }
+      
+      if (audioRef.current) audioRef.current.pause();
+      if (recorder.state === 'recording') recorder.stop();
+    };
+
+    // Start processing
+    setTimeout(processFrames, 500); 
   };
 
+
   const handleExport = (quality: string) => {
-    startRealExport(quality);
+    exportHD(quality);
   };
 
   const downloadProjectCode = () => {
@@ -559,7 +762,7 @@ export default function App() {
         <div class="mt-10 border border-white/10 rounded-3xl p-10 bg-zinc-900 shadow-2xl">
             <p>This is a standalone export of your project metadata.</p>
             <pre class="text-left bg-black p-5 rounded-xl mt-5 text-[10px] opacity-60 overflow-auto max-h-60">
-${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, duration }, null, 2)}
+${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedTransition, duration }, null, 2)}
             </pre>
         </div>
     </div>
@@ -581,100 +784,66 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
     
     let visual: any = {};
     switch (themeId) {
-      case 'velocity':
+      case 'turbo':
         visual = {
           animate: { 
-            rotateY: [0, 20, -20, 0],
-            scale: [1, 1.4, 0.9, 1.1, 1],
-            x: [0, -30, 30, 0],
-            filter: ["hue-rotate(0deg) saturate(1.5) contrast(1)", "hue-rotate(90deg) saturate(3) contrast(1.8)", "hue-rotate(0deg) saturate(1.5) contrast(1)"],
+            scale: [1, 1.15, 1],
+            filter: ["contrast(1) saturate(1)", "contrast(1.6) saturate(2) brightness(1.2)", "contrast(1) saturate(1)"]
           },
-          transition: { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
+          transition: { duration: 0.1, repeat: Infinity }
         };
         break;
-      case 'cyber':
+      case 'echo':
         visual = {
           animate: { 
-            skewX: [0, 25, -25, 10, -10, 0],
-            x: [0, -15, 15, -10, 10, 0],
-            opacity: [1, 0.8, 1, 0.5, 1],
-            filter: ["contrast(1.5) brightness(1.2) hue-rotate(0deg)", "contrast(4) brightness(2) hue-rotate(270deg) invert(1)", "contrast(1.5) brightness(1.2) hue-rotate(0deg)"],
-          },
-          transition: { 
-            x: { duration: 0.08, repeat: Infinity, repeatDelay: 1.5 },
-            filter: { duration: 0.15, repeat: 4, repeatDelay: 2 }
-          }
-        };
-        break;
-      case 'glory':
-        visual = {
-          animate: { 
-            filter: ["sepia(0.2) saturate(2) brightness(1.1)", "sepia(0.4) saturate(3) brightness(1.5)", "sepia(0.2) saturate(2) brightness(1.1)"],
+            x: [0, 8, -8, 0],
+            y: [0, -4, 4, 0],
+            opacity: [1, 0.7, 1],
             scale: [1, 1.05, 1]
           },
-          transition: { duration: 2, repeat: Infinity }
+          transition: { duration: 0.2, repeat: Infinity }
         };
         break;
-      case 'rookie':
+      case 'technical':
         visual = {
           animate: { 
-            y: [0, -3, 3, -1.5, 1.5, 0],
-            rotate: [0, -1, 1, 0],
-            filter: ["grayscale(0.3) contrast(1.5)", "grayscale(0) contrast(2)", "grayscale(0.3) contrast(1.5)"],
+            filter: ["invert(0) brightness(1)", "invert(0.12) brightness(2)", "invert(0) brightness(1)"],
+            x: [0, -12, 12, 0]
           },
-          transition: { duration: 0.15, repeat: Infinity, repeatDelay: 0.5 }
+          transition: { duration: 0.05, repeat: Infinity, repeatDelay: 1 }
         };
         break;
-      case 'ultra':
+      case 'cinematic':
         visual = {
-          animate: { 
-            scale: [1, 2.5, 0.5, 1.8, 1],
-            rotateZ: [0, 10, -10, 5, 0],
-            filter: ["brightness(1) blur(0px) saturate(1)", "brightness(6) blur(15px) saturate(4)", "brightness(1) blur(0px) saturate(1)"]
-          },
-          transition: { duration: 0.35, repeat: Infinity, repeatDelay: 1.2 }
-        };
-        break;
-      case 'power':
-        visual = {
-          animate: { 
-            rotateZ: [0, 5, -5, 0],
-            rotateX: [0, 15, -15, 0],
-            scale: [1, 1.2, 1]
-          },
-          transition: { duration: 2, repeat: Infinity, ease: "linear" }
+          initial: { scale: 1.05 },
+          animate: { scale: 1.15 },
+          transition: { duration: 10, ease: "linear" }
         };
         break;
       case 'stadium':
         visual = {
           animate: { 
-            filter: ["saturate(1.2) contrast(1.1)", "saturate(1.8) contrast(1.3)", "saturate(1.2) contrast(1.1)"],
+            filter: ["brightness(1) saturate(1.2)", "brightness(1.4) saturate(1.6)", "brightness(1) saturate(1.2)"],
+            scale: [1.02, 1.08, 1.02]
           },
-          transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+          transition: { duration: 3, repeat: Infinity }
         };
         break;
-      case 'midnight':
+      case 'pulse':
         visual = {
-          animate: { 
-            filter: ["brightness(0.3) contrast(1.2) sepia(0.2)", "brightness(1) contrast(1.5) sepia(0)", "brightness(0.3) contrast(1.2) sepia(0.2)"],
-          },
-          transition: { duration: 0.1, repeat: 2, repeatDelay: 1.5 }
+          animate: { scale: [1, 1.12, 1] },
+          transition: { duration: 0.5, repeat: Infinity, ease: "easeInOut" }
         };
         break;
-      case 'scan':
+      case 'flash':
         visual = {
-          animate: { 
-            filter: ["hue-rotate(0deg) contrast(1.2) brightness(0.9)", "hue-rotate(180deg) contrast(1.4) brightness(1.1)", "hue-rotate(0deg) contrast(1.2) brightness(0.9)"],
-          },
-          transition: { duration: 4, repeat: Infinity, ease: "linear" }
+           animate: { brightness: [1, 5, 1] },
+           transition: { duration: 1.2, repeat: Infinity }
         };
         break;
-      case 'vhs':
+      case 'grain':
         visual = {
-          animate: { 
-            filter: ["grayscale(0.1) sepia(0.2) contrast(1.2)", "grayscale(0) sepia(0.1) contrast(1)", "grayscale(0.1) sepia(0.2) contrast(1.2)"],
-            x: [0, 1, -1, 0]
-          },
+          animate: { x: [-2, 2, -1], y: [1, -2, 1], filter: ["grayscale(0.2) sepia(0.2)", "grayscale(0) sepia(0.1)"] },
           transition: { duration: 0.05, repeat: Infinity }
         };
         break;
@@ -767,21 +936,37 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-quik-dark text-white select-none relative font-sans">
+      {/* Image/Video Enhancement Layer (Automatic - Smart Sharp) */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .enhanced-media {
+          filter: contrast(1.1) saturate(1.05) brightness(1.0) !important;
+          image-rendering: -webkit-optimize-contrast;
+          transform: translateZ(0);
+        }
+      `}} />
+
       <audio 
         key={selectedMusic.id}
         ref={audioRef} 
-        src={selectedMusic.url} 
+        src={selectedMusic.url || undefined} 
         onEnded={handleStop}
-        crossOrigin={selectedMusic.url.startsWith('blob:') ? undefined : "anonymous"}
         preload="auto"
         onCanPlay={() => setErrorMsg(null)}
         onError={(e) => {
           const error = audioRef.current?.error;
-          let msg = "تعذر تحميل ملف الصوت. قد يكون الرابط منتهي الصلاحية.";
+          let msg = "تعذر تحميل ملف الصوت. يرجى التأكد من اتصالك بالإنترنت.";
           if (error?.code === 4) msg = "المتصفح غير قادر على تشغيل هذا التنسيق.";
           console.warn("Audio load warning:", error?.message || "Source issue");
           setErrorMsg(msg);
           setIsPlaying(false);
+          // Fallback to empty source to avoid "no supported sources" loop if browser retries
+          if (audioRef.current) audioRef.current.src = "";
+          // If we manually reset via Ref, it's better to use empty string or remove attribute
+          // but for the prop, undefined is better.
+          if (audioRef.current) {
+            audioRef.current.removeAttribute('src');
+            audioRef.current.load();
+          }
         }}
       />
       
@@ -800,50 +985,36 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
                 <X className="h-6 w-6" />
               </button>
               {!exporting ? (
-                <div className="space-y-8">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-black italic uppercase tracking-tighter">Export Project</h2>
-                    <p className="text-zinc-500 text-[10px] font-bold uppercase mt-1 tracking-widest">Select HD Master Quality</p>
+                <div className="space-y-8 text-center">
+                  <div className="mx-auto h-24 w-24 bg-sky-500/20 rounded-full flex items-center justify-center text-sky-500 mb-6">
+                    <Sparkles size={48} className="animate-pulse" />
                   </div>
-                  <div className="grid gap-3">
-                    {['720P HD', '1080P FULL HD'].map(q => (
-                      <button 
-                         key={q} onClick={() => handleExport(q)}
-                         className="flex items-center justify-between p-7 bg-zinc-800 rounded-[2rem] hover:border-sky-500 border border-white/5 transition-all group"
-                      >
-                         <div className="flex items-center gap-4">
-                           <div className="h-10 w-10 bg-sky-500/10 rounded-xl flex items-center justify-center text-sky-500 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                             <Film size={20} />
-                           </div>
-                           <span className="font-black italic uppercase text-lg">{q}</span>
-                         </div>
-                         <Download className="h-5 w-5 text-sky-500" />
-                      </button>
-                    ))}
-                    <div className="w-full h-px bg-white/5 my-2" />
-                    <button 
-                       onClick={exportAsHTML}
-                       className="flex items-center justify-between p-5 bg-zinc-950 border border-zinc-800 rounded-[1.5rem] hover:border-emerald-500 transition-all group"
-                    >
-                       <div className="flex items-center gap-4">
-                         <div className="h-8 w-8 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                           <Monitor size={16} />
-                         </div>
-                         <span className="font-bold uppercase text-[10px] tracking-widest text-zinc-400">Export PWA Player</span>
-                       </div>
-                       <Download size={14} className="text-emerald-500" />
-                    </button>
+                  <div>
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter">Smart Export</h2>
+                    <p className="text-zinc-500 text-[11px] font-bold uppercase mt-2 tracking-[0.2em] max-w-[250px] mx-auto">AI will render your footage in 1080P and save it to your gallery</p>
                   </div>
+                  
+                  <button 
+                     onClick={() => handleExport('1080P')}
+                     className="w-full flex items-center justify-center gap-4 p-8 bg-sky-500 rounded-[2.5rem] hover:bg-sky-400 border border-white/20 transition-all shadow-2xl shadow-sky-500/40 group active:scale-95"
+                  >
+                     <Download className="h-6 w-6 text-white" />
+                     <span className="font-black italic uppercase text-xl">START EXPORT</span>
+                  </button>
+
+                  <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Automatic Gallery Save Enabled</p>
                 </div>
               ) : (
-                <div className="text-center space-y-10 py-10">
-                   <h2 className="text-3xl font-black italic uppercase tracking-tighter animate-pulse text-sky-500">Exporting...</h2>
+                <div className="text-center space-y-8 py-6">
+                   <h2 className="text-3xl font-black italic uppercase tracking-tighter animate-pulse text-sky-500">جاري التصدير...</h2>
+                   <p className="text-amber-400 text-[11px] font-bold uppercase tracking-widest animate-bounce">⚠️ يرجى عدم إغلاق الصفحة أو مغادرة التطبيق</p>
                    <div className="space-y-4">
                       <div className="h-2 bg-zinc-800 rounded-full overflow-hidden p-0.5 border border-white/5">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${exportProgress}%` }} className="h-full bg-sky-500 rounded-full shadow-[0_0_20px_#0EA5E9]" />
                       </div>
-                      <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] font-mono">{exportProgress}% Cinematic Render</p>
+                      <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] font-mono">{exportProgress}% Cinematic Rendering</p>
                    </div>
+                   <p className="text-white/20 text-[9px] uppercase max-w-[200px] mx-auto leading-relaxed">نقوم الآن بدمج الحركات والمؤثرات بأعلى دقة. مغادرة الصفحة ستؤدي لفشل التصدير.</p>
                 </div>
               )}
             </div>
@@ -853,7 +1024,18 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
 
       <header className="flex h-20 items-center justify-between border-b border-white/5 bg-quik-surface px-8 z-10 shrink-0">
         <div className="flex items-center gap-5">
-          <button className="h-10 w-10 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 transition-colors"><ChevronLeft size={20}/></button>
+          <button 
+            onClick={() => {
+              if(confirm("هل تريد حذف كافة الوسائط والبدء بمشروع جديد؟")) {
+                setMedia([]);
+                localStorage.removeItem('quik_pro_project');
+              }
+            }}
+            className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+            title="Reset Project"
+          >
+            <X size={20}/>
+          </button>
           <div>
             <h1 className="text-xl font-black italic tracking-tighter text-white uppercase leading-none">QUIK PRO 2020</h1>
             <p className="font-mono text-[9px] font-bold text-sky-500 uppercase mt-1 tracking-widest">{selectedMusic.name} • {duration.toFixed(1)}s</p>
@@ -865,145 +1047,154 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
       {/* Main Preview */}
       <main className="flex-1 bg-quik-black flex items-center justify-center p-8 relative overflow-hidden">
         {/* Dynamic Aspect Ratio Canvas */}
-          <motion.div 
-            layout
-            ref={previewRef}
-            className="relative shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/5 bg-zinc-950 overflow-hidden flex items-center justify-center rounded-3xl"
-            style={{ 
-              aspectRatio: aspectRatio === '16/9' ? '16 / 9' : aspectRatio === '9/16' ? '9 / 16' : '1 / 1',
-              width: aspectRatio === '16/9' ? '100%' : aspectRatio === '9/16' ? 'auto' : 'min(100%, 75vh)',
-              height: aspectRatio === '9/16' ? '100%' : aspectRatio === '1/1' ? 'min(100%, 75vh)' : 'auto',
-              maxHeight: '100%',
-              maxWidth: '100%',
-            }}
-          >
+        <div 
+          className="relative shadow-[0_0_120px_rgba(0,0,0,0.9)] ring-1 ring-white/5 bg-zinc-950 overflow-hidden flex items-center justify-center rounded-3xl"
+          style={{ 
+            aspectRatio: aspectRatio === '16/9' ? '16 / 9' : aspectRatio === '9/16' ? '9 / 16' : '1 / 1',
+            width: aspectRatio === '16/9' ? '100%' : aspectRatio === '9/16' ? 'auto' : 'min(100%, 75vh)',
+            height: aspectRatio === '9/16' ? '100%' : aspectRatio === '1/1' ? 'min(100%, 75vh)' : 'auto',
+            maxHeight: '100%',
+            maxWidth: '100%',
+          }}
+        >
+          <div ref={previewRef} className="absolute inset-0 h-full w-full overflow-hidden flex items-center justify-center">
             {media.length > 0 ? (
-              <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div 
-                  key={`${media[currentMediaIndex]?.id}-${selectedAnimation}-${selectedZoom}-${isPlaying}`} 
-                  className="absolute inset-0 h-full w-full overflow-hidden"
+                  key={exporting ? 'export-render' : `${media[currentMediaIndex]?.id}-${selectedAnimation}-${selectedZoom}-${isPlaying}`} 
+                  className="relative h-full w-full overflow-hidden"
                   {...getAnimationProps(selectedAnimation, selectedZoom)}
                 >
-                  <div className="relative h-full w-full bg-zinc-950 flex items-center justify-center overflow-hidden">
-                    {/* High Precision Background Layer */}
-                    <motion.div 
-                      key={`blur-${currentMediaIndex}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.5 }}
-                      className="absolute inset-0 saturate-200 blur-[80px] pointer-events-none transition-opacity duration-300"
-                      style={{ 
-                        backgroundImage: `url(${media[currentMediaIndex].url})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat'
-                      }}
-                    />
-
-                    {/* Effect Overlays */}
-                    {selectedEffect === 'var' && (
-                      <div className="absolute inset-0 z-40 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none" />
-                    )}
-                    {selectedEffect === 'grid' && (
-                      <div className="absolute inset-0 z-40 border-2 border-white/10 grid grid-cols-3 grid-rows-3 pointer-events-none" />
-                    )}
-                    {selectedEffect === 'lines' && (
-                      <div className="absolute inset-0 z-40 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] pointer-events-none" />
-                    )}
-                    {selectedEffect === 'glow' && (
-                      <div className="absolute inset-0 z-40 bg-gradient-to-t from-sky-500/10 to-transparent border-t border-sky-400/20 pointer-events-none" />
+                  <div className="absolute inset-0 bg-zinc-950 flex items-center justify-center overflow-hidden">
+                    {media[currentMediaIndex] && (
+                      media[currentMediaIndex].type === 'video' ? (
+                        <video 
+                          key={exporting ? undefined : media[currentMediaIndex].id}
+                          src={media[currentMediaIndex].url || undefined} 
+                          className="h-full w-full object-cover enhanced-media" 
+                          style={{ objectPosition: 'center 15%' }}
+                          autoPlay 
+                          muted 
+                          loop 
+                          playsInline
+                        />
+                      ) : (
+                        <img 
+                          key={exporting ? undefined : media[currentMediaIndex].id}
+                          src={media[currentMediaIndex].url || undefined} 
+                          className="h-full w-full object-cover enhanced-media" 
+                          style={{ objectPosition: 'center 15%' }}
+                          crossOrigin="anonymous"
+                        />
+                      )
                     )}
                     
-                    {media[currentMediaIndex].type === 'video' ? (
-                      <video 
-                        src={media[currentMediaIndex].url} 
-                        className="relative z-10 h-full w-full object-cover object-top shadow-2xl" 
-                        autoPlay 
-                        muted 
-                        loop 
-                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') || media[currentMediaIndex].url.startsWith('data:') ? undefined : "anonymous"}
-                      />
-                    ) : (
-                      <img 
-                        src={media[currentMediaIndex].url} 
-                        className="relative z-10 h-full w-full object-cover object-top shadow-2xl" 
-                        crossOrigin={media[currentMediaIndex].url.startsWith('blob:') || media[currentMediaIndex].url.startsWith('data:') ? undefined : "anonymous"}
-                      />
-                    )}
+                    {/* Transition Overlays */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentMediaIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ duration: 0.8, ease: "easeInOut" }}
+                        className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center"
+                      >
+                        {selectedTransition === 'goal_glory' && (
+                          <motion.div 
+                            initial={{ scale: 0, rotate: 0 }}
+                            animate={{ scale: [0, 3], rotate: [0, 45] }}
+                            className="absolute inset-0 bg-white/90" 
+                          />
+                        )}
+                        {selectedTransition === 'pitch_slice' && (
+                          <motion.div 
+                            initial={{ x: '-100%', skewX: -20 }}
+                            animate={{ x: '100%' }}
+                            transition={{ duration: 0.6 }}
+                            className="absolute inset-0 bg-emerald-900" 
+                          />
+                        )}
+                        {selectedTransition === 'jersey_swipe' && (
+                           <div className="absolute inset-0 flex flex-col">
+                              {[1, 2, 3].map(i => (
+                                <motion.div 
+                                  key={i}
+                                  initial={{ scaleY: 0 }}
+                                  animate={{ scaleY: [0, 1, 0] }}
+                                  className={`flex-1 ${i % 2 === 0 ? 'bg-zinc-100' : 'bg-sky-600'}`} 
+                                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                                />
+                              ))}
+                           </div>
+                        )}
+                        {selectedTransition === 'stadium_zoom' && (
+                          <motion.div 
+                             initial={{ scale: 2 }}
+                             animate={{ scale: 0 }}
+                             className="absolute inset-0 border-[150px] border-white"
+                          />
+                        )}
+                        {selectedTransition === 'hexa_grid' && (
+                           <div className="absolute inset-0 grid grid-cols-6 grid-rows-6">
+                             {Array.from({ length: 36 }).map((_, i) => (
+                               <motion.div 
+                                 key={i}
+                                 initial={{ scale: 0 }}
+                                 animate={{ scale: [0, 1.2, 0] }}
+                                 transition={{ delay: Math.random() * 0.3 }}
+                                 className="bg-black aspect-square"
+                                 style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                                />
+                             ))}
+                           </div>
+                        )}
+                        {selectedTransition === 'var_glitch' && (
+                          <motion.div 
+                            animate={{ opacity: [0, 1, 0], scaleY: [1, 5, 1] }}
+                            className="absolute inset-0 bg-sky-500/20" 
+                          />
+                        )}
+                        {selectedTransition === 'ball_roll' && (
+                          <motion.div 
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 5 }}
+                            className="absolute h-20 w-20 bg-zinc-100 rounded-full"
+                          />
+                        )}
+                        {selectedTransition === 'net_ripple' && (
+                           <motion.div 
+                             animate={{ scale: [1, 1.5], opacity: [0, 1, 0] }}
+                             className="absolute inset-0 bg-white/20 blur-sm"
+                           />
+                        )}
+                        {selectedTransition === 'floodlight' && (
+                           <motion.div 
+                             animate={{ opacity: [0, 1, 0] }}
+                             className="absolute inset-0 bg-white"
+                           />
+                        )}
+                        {selectedTransition === 'whistle_wave' && (
+                           <motion.div 
+                             initial={{ scale: 0, opacity: 1 }}
+                             animate={{ scale: 4, opacity: 0 }}
+                             className="absolute h-10 w-10 border-4 border-sky-400 rounded-full"
+                           />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
-                  
-                  {/* Dynamic Transition Overlays */}
-                  <AnimatePresence mode="wait">
-                    <motion.div 
-                      key={`trans-${currentMediaIndex}-${selectedTransition}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ 
-                        opacity: [0, 1, 1, 0],
-                      }}
-                      transition={{ duration: 0.45, ease: "easeInOut", times: [0, 0.2, 0.8, 1] }}
-                      className="absolute inset-0 pointer-events-none z-50 overflow-hidden flex items-center justify-center"
-                    >
-                      {/* Edge Blur Layer */}
-                      <motion.div 
-                        animate={{ 
-                          backdropFilter: ["blur(0px)", "blur(15px)", "blur(0px)"],
-                          WebkitBackdropFilter: ["blur(0px)", "blur(15px)", "blur(0px)"]
-                        }}
-                        transition={{ duration: 0.45, ease: "easeInOut" }}
-                        className="absolute inset-0 z-[51]"
-                        style={{
-                          maskImage: "radial-gradient(circle at center, transparent 30%, black 100%)",
-                          WebkitMaskImage: "radial-gradient(circle at center, transparent 30%, black 100%)"
-                        }}
-                      />
-
-                      {selectedTransition === 'film_roll' && (
-                        <motion.div 
-                          initial={{ y: "100%" }}
-                          animate={{ y: ["100%", "0%", "-100%"] }}
-                          transition={{ duration: 0.5 }}
-                          className="w-full h-full bg-black/80 flex flex-col justify-around py-4 border-l-4 border-r-4 border-dashed border-white/20"
-                        >
-                           <div className="h-10 w-full bg-zinc-800/50" />
-                           <div className="h-10 w-full bg-zinc-800/50" />
-                           <div className="h-10 w-full bg-zinc-800/50" />
-                        </motion.div>
-                      )}
-                      {selectedTransition === 'light_leak' && (
-                         <motion.div 
-                           animate={{ 
-                             background: [
-                               "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(254,215,170,0.5) 50%, transparent 100%)",
-                               "radial-gradient(circle, rgba(255,255,255,0) 0%, rgba(254,215,170,0) 50%, transparent 100%)"
-                             ],
-                             x: ["-50%", "50%"],
-                             opacity: [0.8, 0]
-                           }}
-                           transition={{ duration: 0.4 }}
-                           className="absolute inset-0 z-50"
-                         />
-                      )}
-                      {selectedTransition === 'blur_flash' && (
-                         <motion.div 
-                           animate={{ backdropFilter: ["blur(0px)", "blur(20px)", "blur(0px)"], background: ["rgba(255,255,255,0)", "rgba(255,255,255,0.3)", "rgba(255,255,255,0)"] }}
-                           className="absolute inset-0"
-                         />
-                      )}
-                      {selectedTransition === 'zoom_burst' && (
-                         <motion.div 
-                           animate={{ scale: [0.8, 1.5], opacity: [1, 0] }}
-                           className="absolute inset-0 border-[20px] border-white/30 rounded-full"
-                         />
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
                 </motion.div>
-              </AnimatePresence>
             ) : (
-             <div className="text-center text-zinc-800 p-20">
+              <div className="text-center text-zinc-800 p-20">
                 <ImageIcon size={60} className="mx-auto mb-4 opacity-10" />
                 <p className="text-[11px] font-black italic uppercase tracking-[0.3em]">Load your footage</p>
-             </div>
-          )}
+              </div>
+            )}
+            
+            {/* Branding Watermark */}
+            <div className="absolute bottom-6 right-6 z-[60] flex items-center gap-2 opacity-40 mix-blend-screen pointer-events-none">
+              <div className="h-3 w-3 rounded-full bg-sky-500" />
+              <span className="text-[9px] font-black italic uppercase tracking-tighter">QUIK PRO</span>
+            </div>
+          </div>
 
           {!isPlaying && media.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
@@ -1022,7 +1213,7 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
              <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.1, ease: "linear" }} className="h-full bg-sky-500 shadow-[0_0_20px_#0EA5E9]" />
           </div>
-        </motion.div>
+        </div>
       </main>
 
       <footer className="h-[280px] bg-quik-surface z-10 shrink-0 border-t border-white/5 flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.4)]">
@@ -1031,7 +1222,7 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
               {[
                 { id: 'MEDIA', label: 'FOOTAGE', icon: ImageIcon },
                 { id: 'ANIMATIONS', label: 'ANIM', icon: Wand2 },
-                { id: 'EFFECTS', label: 'EFFECTS', icon: Sparkles },
+                { id: 'TRANSITIONS', label: 'TRANSITION', icon: Layers },
                 { id: 'ZOOM', label: 'ZOOM', icon: Monitor },
                 { id: 'MUSIC', label: 'BEATS', icon: Music },
                 { id: 'EDIT', label: 'RATIO', icon: Smartphone },
@@ -1069,30 +1260,32 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
                        )}
                     </motion.div>
                   ))}
+                  <div className="w-40 shrink-0" />
                 </div>
              </div>
            )}
 
-           {activeTab === 'EFFECTS' && (
+           {activeTab === 'TRANSITIONS' && (
              <div className="flex h-full items-center px-10 overflow-x-auto py-5 scrollbar-hide touch-pan-x bg-zinc-950/20">
                 <div className="flex gap-4 min-w-max items-center h-full">
-                  {VIDEO_EFFECTS.map(fx => (
+                  {TRANSITION_STYLES.map(transition => (
                     <motion.div 
-                       key={fx.id} whileHover={{ scale: 1.05, y: -5 }} whileTap={{ scale: 0.95 }} onClick={() => setSelectedEffect(fx.id)}
-                       className={`relative h-44 w-44 shrink-0 rounded-[2.5rem] p-7 cursor-pointer border-2 transition-all flex flex-col justify-between group ${selectedEffect === fx.id ? "bg-sky-500 border-sky-400 shadow-[0_20px_50px_rgba(14,165,233,0.2)] scale-105 z-10" : "bg-zinc-900 border-white/5 opacity-40 hover:opacity-100"}`}
+                       key={transition.id} whileHover={{ scale: 1.05, y: -5 }} whileTap={{ scale: 0.95 }} onClick={() => setSelectedTransition(transition.id as any)}
+                       className={`relative h-44 w-44 shrink-0 rounded-[2.5rem] p-7 cursor-pointer border-2 transition-all flex flex-col justify-between group ${selectedTransition === transition.id ? "bg-white border-white shadow-[0_20px_50px_rgba(255,255,255,0.1)] scale-105 z-10" : "bg-zinc-900 border-white/5 opacity-40 hover:opacity-100"}`}
                     >
-                       <div className={`h-16 w-16 rounded-3xl flex items-center justify-center text-white transition-transform duration-500 group-hover:rotate-12 ${selectedEffect === fx.id ? "bg-black shadow-lg" : "bg-zinc-800"}`}>
-                         <Sparkles size={30} />
+                       <div className={`h-16 w-16 rounded-3xl flex items-center justify-center text-3xl transition-transform duration-500 group-hover:rotate-12 ${selectedTransition === transition.id ? "bg-black shadow-lg" : "bg-zinc-800"}`}>
+                         <span>{transition.icon}</span>
                        </div>
                        <div className="space-y-1">
-                         <h3 className={`font-black italic text-xs uppercase tracking-widest ${selectedEffect === fx.id ? "text-white" : "text-white/80"}`}>{fx.name}</h3>
-                         <p className={`text-[8px] font-bold uppercase tracking-tighter ${selectedEffect === fx.id ? "text-white/60" : "text-zinc-400"}`}>{fx.description}</p>
+                         <h3 className={`font-black italic text-[10px] uppercase tracking-widest ${selectedTransition === transition.id ? "text-black" : "text-white"}`}>{transition.name}</h3>
+                         <p className={`text-[8px] font-bold uppercase tracking-tighter ${selectedTransition === transition.id ? "text-zinc-500" : "text-zinc-400"}`}>{transition.description}</p>
                        </div>
-                       {selectedEffect === fx.id && (
-                         <motion.div layoutId="active-fx" className="absolute inset-0 border-4 border-white rounded-[2.5rem] pointer-events-none" />
+                       {selectedTransition === transition.id && (
+                         <motion.div layoutId="active-trans" className="absolute inset-0 border-4 border-sky-500 rounded-[2.5rem] pointer-events-none" />
                        )}
                     </motion.div>
                   ))}
+                  <div className="w-40 shrink-0" />
                 </div>
              </div>
            )}
@@ -1179,56 +1372,6 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedEffect, durati
                     </Reorder.Group>
                     <div className="w-64 shrink-0" />
                   </div>
-                </div>
-             </div>
-           )}
-
-           {activeTab === 'ANIMATIONS' && (
-             <div className="flex h-full items-center px-10 overflow-x-auto py-5 scrollbar-hide touch-pan-x bg-zinc-950/20">
-                <div className="flex gap-4 min-w-max items-center h-full">
-                  {ANIMATIONS.map(anim => (
-                    <motion.div 
-                       key={anim.id} whileHover={{ scale: 1.05, y: -5 }} whileTap={{ scale: 0.95 }} onClick={() => setSelectedAnimation(anim.id)}
-                       className={`relative h-44 w-44 shrink-0 rounded-[2.5rem] p-7 cursor-pointer border-2 transition-all flex flex-col justify-between group ${selectedAnimation === anim.id ? "bg-white border-white shadow-[0_20px_50px_rgba(255,255,255,0.1)] scale-105 z-10" : "bg-zinc-900 border-white/5 opacity-40 hover:opacity-100"}`}
-                    >
-                       <div className={`h-16 w-16 rounded-3xl flex items-center justify-center text-sky-500 transition-transform duration-500 group-hover:rotate-12 ${selectedAnimation === anim.id ? "bg-black shadow-lg" : "bg-zinc-800"}`}>
-                         <Zap size={30} />
-                       </div>
-                       <div className="space-y-1">
-                         <h3 className={`font-black italic text-xs uppercase tracking-widest ${selectedAnimation === anim.id ? "text-black" : "text-white"}`}>{anim.name}</h3>
-                         <p className={`text-[8px] font-bold uppercase tracking-tighter ${selectedAnimation === anim.id ? "text-zinc-500" : "text-zinc-400"}`}>{anim.description}</p>
-                       </div>
-                       {selectedAnimation === anim.id && (
-                         <motion.div layoutId="active-anim" className="absolute inset-0 border-4 border-sky-500 rounded-[2.5rem] pointer-events-none" />
-                       )}
-                    </motion.div>
-                  ))}
-                  <div className="w-40 shrink-0" />
-                </div>
-             </div>
-           )}
-
-           {activeTab === 'EFFECTS' && (
-             <div className="flex h-full items-center px-10 overflow-x-auto py-5 scrollbar-hide touch-pan-x bg-zinc-950/20">
-                <div className="flex gap-4 min-w-max items-center h-full">
-                  {VIDEO_EFFECTS.map(fx => (
-                    <motion.div 
-                       key={fx.id} whileHover={{ scale: 1.05, y: -5 }} whileTap={{ scale: 0.95 }} onClick={() => setSelectedEffect(fx.id)}
-                       className={`relative h-44 w-44 shrink-0 rounded-[2.5rem] p-7 cursor-pointer border-2 transition-all flex flex-col justify-between group ${selectedEffect === fx.id ? "bg-sky-500 border-sky-400 shadow-[0_20px_50px_rgba(14,165,233,0.2)] scale-105 z-10" : "bg-zinc-900 border-white/5 opacity-40 hover:opacity-100"}`}
-                    >
-                       <div className={`h-16 w-16 rounded-3xl flex items-center justify-center text-white transition-transform duration-500 group-hover:rotate-12 ${selectedEffect === fx.id ? "bg-black shadow-lg" : "bg-zinc-800"}`}>
-                         <Sparkles size={30} />
-                       </div>
-                       <div className="space-y-1">
-                         <h3 className={`font-black italic text-xs uppercase tracking-widest ${selectedEffect === fx.id ? "text-white" : "text-white/80"}`}>{fx.name}</h3>
-                         <p className={`text-[8px] font-bold uppercase tracking-tighter ${selectedEffect === fx.id ? "text-white/60" : "text-zinc-400"}`}>{fx.description}</p>
-                       </div>
-                       {selectedEffect === fx.id && (
-                         <motion.div layoutId="active-fx" className="absolute inset-0 border-4 border-white rounded-[2.5rem] pointer-events-none" />
-                       )}
-                    </motion.div>
-                  ))}
-                  <div className="w-40 shrink-0" />
                 </div>
              </div>
            )}
