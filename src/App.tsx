@@ -1037,7 +1037,7 @@ ${JSON.stringify({ media, aspectRatio, selectedAnimation, selectedTransition, du
             <X size={20}/>
           </button>
           <div>
-            <h1 className="text-xl font-black italic tracking-tighter text-white uppercase leading-none">QUIK PRO 2020</h1>
+            <h1 className="text-xl font-black italic tracking-tighter text-white uppercase leading-none">QUIK PRO 2.0</h1>
             <p className="font-mono text-[9px] font-bold text-sky-500 uppercase mt-1 tracking-widest">{selectedMusic.name} • {duration.toFixed(1)}s</p>
           </div>
         </div>
