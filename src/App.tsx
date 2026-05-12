@@ -509,116 +509,144 @@ export default function App() {
 
       switch (themeId) {
         case 'turbo':
-          // Subtle rhythmic pulse matching Heartbeat
-          const p = 1 + (Math.abs(Math.sin(t * 8)) * 0.08);
+          // High intensity pulse matching 0.1s fast cycle
+          const p = 1 + (Math.abs(Math.sin(t * 20)) * 0.1);
           ctx.translate(cw/2, ch/2); ctx.scale(p, p); ctx.translate(-cw/2, -ch/2);
-          ctx.filter += ' brightness(1.1) saturate(1.2)';
+          ctx.filter += ` saturate(${1.2 + Math.abs(Math.sin(t * 20)) * 0.5}) contrast(1.2)`;
           break;
         case 'echo':
-          // Simple side-to-side ghosting
-          ctx.translate(Math.sin(t * 10) * 5, 0);
-          ctx.globalAlpha = 0.9;
+          // Ghosting effect
+          ctx.translate(Math.sin(t * 12) * 8, Math.cos(t * 12) * 4);
+          ctx.globalAlpha = 0.85 + Math.sin(t * 12) * 0.1;
           break;
         case 'technical':
-          if (Math.random() > 0.94) {
-             ctx.translate((Math.random()-0.5)*30, 0);
-             ctx.filter += ' invert(0.1) brightness(1.5)';
+          if (Math.random() > 0.96) {
+             ctx.translate((Math.random()-0.5)*40, (Math.random()-0.5)*10);
+             ctx.filter += ' invert(0.15) brightness(2) contrast(1.5)';
           }
           break;
         case 'cinematic':
-          // Slow steady push
-          const cScale = 1.05 + ( (frameIndex/totalFrames) * 0.1);
-          ctx.translate(cw/2, ch/2); ctx.scale(cScale, cScale); ctx.translate(-cw/2, -ch/2);
+          // Slow steady push is handled by zoom, here we add color vibe
+          ctx.filter += ' sepia(0.1) contrast(1.05) brightness(0.98)';
           break;
         case 'pulse':
           const pulse = 1 + (Math.abs(Math.cos(t * 6)) * 0.1);
           ctx.translate(cw/2, ch/2); ctx.scale(pulse, pulse); ctx.translate(-cw/2, -ch/2);
           break;
         case 'flash':
-          if (t % 1.5 < 0.15) ctx.filter += ' brightness(3) contrast(0.5)';
+          if ((t * 1000) % 1200 < 150) ctx.filter += ' brightness(4) contrast(0.5)';
           break;
         case 'stadium':
-          ctx.filter += ` brightness(${1 + Math.sin(t*2) * 0.1}) saturate(1.1)`;
+          ctx.filter += ` brightness(${1.1 + Math.sin(t*2) * 0.15}) saturate(1.3)`;
           break;
         case 'grain':
-          ctx.translate((Math.random()-0.5)*3, (Math.random()-0.5)*3);
-          ctx.filter += ' sepia(0.1) contrast(1.1)';
+          ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
+          ctx.filter += ' grayscale(0.2) sepia(0.15) contrast(1.1)';
           break;
       }
     };
 
     const drawCanvasTransition = (ctx: CanvasRenderingContext2D, type: string, frameIndex: number, totalFrames: number, mediaCount: number) => {
-       const progress = (frameIndex / totalFrames);
-       const clipProgress = (progress * mediaCount) % 1;
-       const transitionWindow = 0.2; 
-       let alpha = 0;
-       
-       if (clipProgress < transitionWindow) {
-         alpha = 1 - (clipProgress / transitionWindow);
-       } else if (clipProgress > (1 - transitionWindow)) {
-         alpha = (clipProgress - (1 - transitionWindow)) / transitionWindow;
-       } else {
-         return;
-       }
+        const progress = (frameIndex / totalFrames);
+        const clipProgress = (progress * mediaCount) % 1;
+        const transitionWindow = 0.2; 
+        let alpha = 0;
+        
+        if (clipProgress < transitionWindow) {
+          alpha = 1 - (clipProgress / transitionWindow);
+        } else if (clipProgress > (1 - transitionWindow)) {
+          alpha = (clipProgress - (1 - transitionWindow)) / transitionWindow;
+        } else {
+          return;
+        }
 
-       const w = ctx.canvas.width;
-       const h = ctx.canvas.height;
-       ctx.save();
-       ctx.globalAlpha = alpha;
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        ctx.save();
+        ctx.globalAlpha = alpha;
 
-       switch (type) {
-         case 'goal_glory':
-           ctx.fillStyle = 'white';
-           ctx.fillRect(0, 0, w, h);
-           break;
-         case 'pitch_slice':
-           ctx.fillStyle = '#065f46'; // Emerald 900
-           ctx.beginPath();
-           const x = (1 - alpha) * w * 2 - w;
-           ctx.moveTo(x, 0); ctx.lineTo(x + w, 0); ctx.lineTo(x + w * 1.2, h); ctx.lineTo(x + w * 0.2, h);
-           ctx.fill();
-           break;
-         case 'jersey_swipe':
-           const barH = h / 3;
-           for (let i = 0; i < 3; i++) {
-             ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#0ea5e9';
-             const barAlpha = Math.max(0, Math.min(1, alpha * 2 - (i * 0.2)));
-             ctx.fillRect(0, i * barH, w * barAlpha, barH);
-           }
-           break;
-         case 'stadium_zoom':
-           ctx.fillStyle = 'white';
-           ctx.beginPath();
-           ctx.arc(w/2, h/2, (w+h) * (1-alpha), 0, Math.PI * 2);
-           ctx.fill();
-           break;
-         case 'hexa_grid':
-            ctx.fillStyle = 'black';
+        switch (type) {
+          case 'goal_glory':
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.translate(w/2, h/2);
+            ctx.scale(alpha * 4, alpha * 4);
+            ctx.rotate(alpha * 0.5);
+            ctx.fillRect(-w/2, -h/2, w, h);
+            break;
+          case 'pitch_slice':
+            ctx.fillStyle = '#134e4a';
+            ctx.beginPath();
+            const xO = (1 - alpha) * w * 2.5 - w * 0.5;
+            ctx.moveTo(xO, 0); 
+            ctx.lineTo(xO + w, 0); 
+            ctx.lineTo(xO + w * 0.7, h); 
+            ctx.lineTo(xO - w * 0.3, h);
+            ctx.fill();
+            break;
+          case 'jersey_swipe':
+            const barH = h / 3;
+            for (let i = 0; i < 3; i++) {
+              ctx.fillStyle = i % 2 === 0 ? '#f8fafc' : '#0284c7';
+              const stagger = i * 0.1;
+              const barAlpha = Math.max(0, Math.min(1, (alpha - stagger) * 2));
+              ctx.fillRect(0, i * barH, w * barAlpha, barH);
+            }
+            break;
+          case 'stadium_zoom':
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 100 * alpha;
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, (w+h) * (1-alpha) * 0.5, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+          case 'hexa_grid':
+            ctx.fillStyle = '#09090b';
             const cell = w / 6;
             for(let i=0; i<36; i++) {
               const r = Math.floor(i/6); const c = i%6;
-              const d = Math.random() * 0.2;
-              const s = Math.max(0, Math.min(1, alpha * 2 - d));
-              if(s > 0) ctx.fillRect(c*cell, r*cell, cell * s, cell * s);
+              const stagger = (c + r) * 0.05;
+              const sBoundary = Math.max(0, Math.min(1, (alpha - stagger) * 2));
+              if(sBoundary > 0) {
+                 const cx = c*cell + cell/2; const cy = r*cell + cell/2;
+                 const rad = (cell/2) * sBoundary * 1.1;
+                 ctx.beginPath();
+                 for(let k=0; k<6; k++) ctx.lineTo(cx + rad * Math.cos(Math.PI/3 * k), cy + rad * Math.sin(Math.PI/3 * k));
+                 ctx.closePath(); ctx.fill();
+              }
             }
             break;
-         case 'ball_roll':
-            ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(w/2, h/2, (w+h) * alpha, 0, Math.PI * 2); ctx.fill();
+          case 'ball_roll':
+            ctx.fillStyle = '#f1f5f9';
+            ctx.beginPath(); 
+            ctx.arc(w/2, h/2, (w+h) * alpha * 0.6, 0, Math.PI * 2); 
+            ctx.fill();
             break;
-         case 'floodlight':
-            ctx.fillStyle = 'white'; ctx.fillRect(0, 0, w, h);
-            break;
-         case 'whistle_wave':
-            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 40 * alpha;
-            ctx.beginPath(); ctx.arc(w/2, h/2, (w+h) * clipProgress * 0.5, 0, Math.PI * 2); ctx.stroke();
-            break;
-         case 'var_glitch':
-            ctx.fillStyle = 'rgba(14, 165, 233, 0.3)';
+          case 'floodlight':
+            ctx.fillStyle = 'white'; 
+            ctx.globalAlpha = alpha;
             ctx.fillRect(0, 0, w, h);
             break;
-       }
-       ctx.restore();
+          case 'whistle_wave':
+            ctx.strokeStyle = '#38bdf8'; 
+            ctx.lineWidth = 30 * (1 - alpha);
+            ctx.beginPath(); 
+            ctx.arc(w/2, h/2, (w+h) * clipProgress * 0.8, 0, Math.PI * 2); 
+            ctx.stroke();
+            break;
+          case 'var_glitch':
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.4)';
+            if (Math.random() > 0.6) ctx.fillRect(0, Math.random() * h, w, 30);
+            ctx.fillRect(0, 0, w, h);
+            break;
+          case 'net_ripple':
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            for(let i=0; i<8; i++) {
+               ctx.beginPath(); ctx.arc(w/2, h/2, i * 80 * alpha, 0, Math.PI * 2); ctx.stroke();
+            }
+            break;
+        }
+        ctx.restore();
     };
 
     const processFrames = async () => {
@@ -667,6 +695,10 @@ export default function App() {
           drawCanvasAnimation(ctx, selectedAnimation, framesCaptured, totalFrames);
 
           // Drawing Media
+          ctx.save();
+          const mediaDuration = totalSeconds / media.length;
+          const zoomIntensity = 0.2 + (mediaDuration * 0.02);
+
           if (item.type === 'image') {
             const img = assetCache.current.get(item.url);
             if (img) {
@@ -677,13 +709,43 @@ export default function App() {
               let yPos = (canvas.height - nh) / 2;
               if (nh > canvas.height) yPos = - (nh - canvas.height) * 0.15;
 
-              let zs = 1;
-              if (selectedZoom === 'ken_burns_in') zs = 1 + (0.12 * itemProgress);
-              else if (selectedZoom === 'ken_burns_out') zs = 1.12 - (0.12 * itemProgress);
-              else zs = 1.05;
-
+              // Matching Zoom Styles
               ctx.translate(canvas.width/2, canvas.height/2);
-              ctx.scale(zs, zs);
+              
+              switch(selectedZoom) {
+                case 'ken_burns_in':
+                  const sIn = 1 + (zoomIntensity * itemProgress);
+                  ctx.scale(sIn, sIn);
+                  break;
+                case 'ken_burns_out':
+                  const sOut = (1 + zoomIntensity) - (zoomIntensity * itemProgress);
+                  ctx.scale(sOut, sOut);
+                  break;
+                case 'pulse':
+                  const pS = 1.1 + Math.sin(framesCaptured * 0.2) * 0.05;
+                  ctx.scale(pS, pS);
+                  break;
+                case 'orbit':
+                  const rot = -2 + (itemProgress * 4);
+                  ctx.rotate(rot * Math.PI / 180);
+                  ctx.scale(1.2, 1.2);
+                  break;
+                case 'drift_right':
+                  ctx.translate(-50 + (itemProgress * 100), 0);
+                  ctx.scale(1.2, 1.2);
+                  break;
+                case 'tracker':
+                  ctx.translate(0, -20 + (itemProgress * 40));
+                  ctx.scale(1.2, 1.2);
+                  break;
+                case 'shock':
+                  const shockS = itemProgress < 0.2 ? 1 + (itemProgress * 1.5) : 1.3 - ( (itemProgress - 0.2) * 0.2);
+                  ctx.scale(shockS, shockS);
+                  break;
+                default:
+                  ctx.scale(1.15, 1.15);
+              }
+              
               ctx.translate(-canvas.width/2, -canvas.height/2);
               ctx.drawImage(img, xPos, yPos, nw, nh);
             }
@@ -700,6 +762,7 @@ export default function App() {
             }
           }
           ctx.restore();
+          ctx.restore(); // Restore theme animation and global state
 
           // Transitions
           drawCanvasTransition(ctx, selectedTransition, framesCaptured, totalFrames, media.length);
